@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -38,7 +39,7 @@ func main() {
 	base.Flags.Usage = func() {
 		out := base.Flags.Output()
 		fmt.Fprintf(out,
-			"%s: Take notes on foods\n\nCommands:\n",
+			"%s: Store json dumps\n\nCommands:\n",
 			os.Args[0])
 		base.CommandList(out)
 		if HasFlags(base.Flags) {
@@ -75,6 +76,12 @@ func main() {
 
 	cmd := opts.Get("cmdline-command", "")
 	// args := SplitArguments(opts.Get("cmdline-args", ""))
+
+	ctx := context.TODO()
+
+	db, err := CreateDb(dbpath,ctx)
+	checkErr(err)
+	defer db.Close()
 
 	switch cmd {
 	case "start-web":
