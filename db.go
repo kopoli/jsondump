@@ -23,7 +23,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS content USING fts4 (
 
 CREATE TABLE IF NOT EXISTS dumpcontent (
   dumpid INTEGER REFERENCES dump(id) NOT NULL,
-  contentid INTEGER REFERENCES content(rowid) NOT NULL,
+  contentid INTEGER REFERENCES content(rowid) ON DELETE CASCADE NOT NULL,
   added DATETIME,
   UNIQUE (dumpid, contentid)
 );
@@ -68,23 +68,22 @@ func CreateDb(path string, ctx context.Context) (*Db, error) {
 	return ret, nil
 }
 
-func (db *Db) Add(path, content string) error {
-	pathquery := `
--- Possibly insert a new path to the DB
-INSERT INTO dump(path)
-SELECT $1
-WHERE NOT EXISTS (SELECT 1 FROM dump WHERE path = $1);
+func (db *Db) exec(queries []string, args ...interface{}) error {
+	tx, err := db.db.BeginTx(db.ctx, nil)
+	if err != nil {
+		return err
+	}
 
--- Remove excess elements from the path
-
--- Insert new content
-`
-
-	added := time.Now()
-
-	// db.db.QueryContext(ctx context.Context, query string, args ...interface{})
-	_, err := db.db.ExecContext(db.ctx, pathquery,
-		path, db.MaxVersions, content, added)
+	for _, query := range queries {
+		_, err = tx.ExecContext(db.ctx, query,
+			args...,
+		)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
@@ -92,12 +91,66 @@ WHERE NOT EXISTS (SELECT 1 FROM dump WHERE path = $1);
 	return nil
 }
 
+func (db *Db) Add(path, content string) error {
+	queries := []string{
+		`-- Possibly insert a new path to the DB
+INSERT INTO dump(path)
+SELECT @path
+WHERE NOT EXISTS (SELECT 1 FROM dump WHERE path = @path);`,
+
+		`-- Remove excess elements from the path
+DELETE FROM content WHERE content.rowid = (
+  SELECT contentid FROM dumpcontent WHERE dumpcontent.added <= (
+    SELECT MAX(added) FROM (
+      SELECT added FROM dumpcontent ORDER BY added LIMIT 0, @max)));`,
+
+		`-- Insert new content
+INSERT INTO content(text) VALUES (@content);`,
+
+		`-- Insert new bindings
+INSERT INTO dumpcontent(dumpid, contentid, added)
+SELECT dump.id, content.rowid, @added FROM dump, content
+WHERE dump.path = @path AND content.text = @content;
+`}
+
+	added := time.Now()
+
+	return db.exec(queries,
+		sql.Named("path", path),
+		sql.Named("content", content),
+		sql.Named("added", added),
+		sql.Named("max", db.MaxVersions),
+	)
+}
+
 func (db *Db) Delete(path, id string) error {
 	return nil
 }
 
 func (db *Db) GetPaths() ([]string, error) {
-	return nil, nil
+	query := `
+SELECT path FROM dump ORDER BY path ASC;
+`
+	rows, err := db.db.QueryContext(db.ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	for rows.Next() {
+		var path string
+		err = rows.Scan(&path)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, path)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 func (db *Db) GetContent(path, id string) ([]Content, error) {

@@ -34,7 +34,7 @@ func compare(t *testing.T, msg string, a, b interface{}) {
 	}
 }
 
-var dbfile = ":memory:"
+var dbfile = "test.sqlite3"
 
 func TestCreateDb(t *testing.T) {
 	ctx := context.TODO()
@@ -103,8 +103,15 @@ func TestDb(t *testing.T) {
 		{"Single path", []testOp{
 			add("/abc", "content"),
 		}, false, []string{"/abc"}},
+		{"Two paths", []testOp{
+			add("/abc", "content"),
+			add("/second", "other"),
+		}, false, []string{"/abc", "/second"}},
 	}
 	for _, tt := range tests {
+		// Remove the dbfile before testing
+		_ = os.Remove(dbfile)
+
 		db, err := CreateDb(dbfile, ctx)
 		if err != nil {
 			t.Errorf("Setting up db failed with error = %v", err)
