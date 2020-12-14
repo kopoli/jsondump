@@ -88,9 +88,15 @@ func (t testFunc) run(d *Db) error {
 }
 
 func TestDb(t *testing.T) {
-	add := func(path, content string) testFunc {
+	add := func(path string, content ...string) testFunc {
 		return func(d *Db) error {
-			return d.Add(path, content)
+			for _, c := range content {
+				err := d.Add(path, c)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		}
 	}
 
@@ -101,6 +107,23 @@ func TestDb(t *testing.T) {
 				return err
 			}
 			return compare(t, "content not equal", c[0].Text, content)
+		}
+	}
+
+	setMaxVersions := func(vers int) testFunc {
+		return func(d *Db) error {
+			d.MaxVersions = vers
+			return nil
+		}
+	}
+
+	expectContentVersions := func(path string, count int) testFunc {
+		return func(d *Db) error {
+			c, err := d.GetContent(path, -1)
+			if err != nil {
+				return err
+			}
+			return compare(t, "Version count inequal", len(c), count)
 		}
 	}
 
@@ -127,6 +150,23 @@ func TestDb(t *testing.T) {
 			expectLatestContent("/a", "updated"),
 			add("/a", "Third time"),
 			expectLatestContent("/a", "Third time"),
+		}, false, []string{"/a"}},
+		{"Versions under limit", []testOp{
+			setMaxVersions(5),
+			add("/a", "1", "2", "3", "4"),
+			expectLatestContent("/a", "4"),
+			expectContentVersions("/a", 4),
+		}, false, []string{"/a"}},
+		{"Versions over limit", []testOp{
+			setMaxVersions(5),
+			add("/a", "1", "2", "3", "4", "5", "6", "7"),
+			expectLatestContent("/a", "7"),
+			expectContentVersions("/a", 5),
+		}, false, []string{"/a"}},
+		{"Default versions over limit", []testOp{
+			add("/a", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"),
+			expectLatestContent("/a", "11"),
+			expectContentVersions("/a", 10),
 		}, false, []string{"/a"}},
 	}
 	for _, tt := range tests {

@@ -23,7 +23,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS content USING fts4 (
 
 CREATE TABLE IF NOT EXISTS dumpcontent (
   dumpid INTEGER REFERENCES dump(id) NOT NULL,
-  contentid INTEGER REFERENCES content(rowid) ON DELETE CASCADE NOT NULL,
+  contentid INTEGER REFERENCES content(rowid) NOT NULL,
   added DATETIME,
   UNIQUE (dumpid, contentid)
 );
@@ -98,12 +98,17 @@ INSERT INTO dump(path)
 SELECT @path
 WHERE NOT EXISTS (SELECT 1 FROM dump WHERE path = @path);`,
 
-// 		`-- Remove excess elements from the path
-// DELETE FROM content WHERE content.rowid = (
-//   SELECT contentid FROM dumpcontent WHERE dumpcontent.added <= (
-//     SELECT MAX(added) FROM (
-//       SELECT added FROM dumpcontent ORDER BY added LIMIT 0, @max)));`,
+		`-- Remove excess elements from the junction table
+DELETE FROM dumpcontent
+WHERE dumpcontent.dumpid = (SELECT id FROM dump WHERE path = @path) AND
+  dumpcontent.contentid IN (
+SELECT contentid FROM dumpcontent ORDER BY contentid DESC LIMIT -1 OFFSET @max);
+`,
 
+		`-- Remove unreferenced elements from the content table
+DELETE FROM content
+WHERE content.rowid NOT IN (SELECT contentid FROM dumpcontent);
+`,
 		`-- Insert new content
 INSERT INTO content(text) VALUES (@content);`,
 
@@ -119,11 +124,11 @@ WHERE dump.path = @path AND content.text = @content;
 		sql.Named("path", path),
 		sql.Named("content", content),
 		sql.Named("added", added),
-		sql.Named("max", db.MaxVersions),
+		sql.Named("max", db.MaxVersions - 1),
 	)
 }
 
-func (db *Db) Delete(path string, ids ...int) error {
+func (db *Db) Delete(path string, id int) error {
 	return nil
 }
 
@@ -184,6 +189,10 @@ LIMIT @limit;
 		}
 		ret = append(ret, c)
 		return nil
+	}
+
+	if numLatest < 0 {
+		numLatest = db.MaxVersions
 	}
 
 	err := db.query(query, row,
