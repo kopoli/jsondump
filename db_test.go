@@ -100,6 +100,12 @@ func TestDb(t *testing.T) {
 		}
 	}
 
+	del := func(path string) testFunc {
+		return func(d *Db) error {
+			return d.Delete(path)
+		}
+	}
+
 	expectLatestContent := func(path, content string) testFunc {
 		return func(d *Db) error {
 			c, err := d.GetContent(path, 1)
@@ -168,6 +174,16 @@ func TestDb(t *testing.T) {
 			expectLatestContent("/a", "11"),
 			expectContentVersions("/a", 10),
 		}, false, []string{"/a"}},
+		{"Deleting one path", []testOp{
+			add("/abc", "content"),
+			del("/abc"),
+		}, false, []string{}},
+		{"Deleting one path 2", []testOp{
+			add("/abc", "content"),
+			add("/second", "other"),
+			add("/third", "val"),
+			del("/second"),
+		}, false, []string{"/abc", "/third"}},
 	}
 	for _, tt := range tests {
 		// Remove the dbfile before testing

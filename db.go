@@ -45,7 +45,6 @@ type Content struct {
 }
 
 func CreateDb(path string, ctx context.Context) (*Db, error) {
-	// dbfile := filepath.Join(path, "jsondump.sqlite3")
 	d, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc", path))
 	if err != nil {
 		return nil, err
@@ -124,16 +123,31 @@ WHERE dump.path = @path AND content.text = @content;
 		sql.Named("path", path),
 		sql.Named("content", content),
 		sql.Named("added", added),
-		sql.Named("max", db.MaxVersions - 1),
+		sql.Named("max", db.MaxVersions-1),
 	)
 }
 
-func (db *Db) Delete(path string, id int) error {
-	return nil
+func (db *Db) Delete(path string) error {
+	queries := []string{
+		`-- Remove excess elements from the junction table
+DELETE FROM dumpcontent
+WHERE dumpcontent.dumpid = (SELECT id FROM dump WHERE path = @path);
+`,
+		`-- Remove unreferenced elements from the content table
+DELETE FROM content
+WHERE content.rowid NOT IN (SELECT contentid FROM dumpcontent);
+`,
+		`-- Delete path
+DELETE FROM dump
+WHERE dump.path = @path;
+`}
+	return db.exec(queries,
+		sql.Named("path", path),
+	)
 }
 
 func (db *Db) query(query string, handleRow func(*sql.Rows) error,
-	args ...interface{}) (error) {
+	args ...interface{}) error {
 
 	rows, err := db.db.QueryContext(db.ctx, query, args...)
 	if err != nil {
