@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/kopoli/appkit"
 )
@@ -79,7 +80,8 @@ func main() {
 
 	ctx := context.TODO()
 
-	db, err := CreateDb(dbpath,ctx)
+	dbpath = filepath.Join(dbpath, "jsondump.sqlite3")
+	db, err := CreateDb(dbpath, ctx)
 	checkErr(err)
 	defer db.Close()
 
