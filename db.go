@@ -98,11 +98,11 @@ INSERT INTO dump(path)
 SELECT @path
 WHERE NOT EXISTS (SELECT 1 FROM dump WHERE path = @path);`,
 
-		`-- Remove excess elements from the path
-DELETE FROM content WHERE content.rowid = (
-  SELECT contentid FROM dumpcontent WHERE dumpcontent.added <= (
-    SELECT MAX(added) FROM (
-      SELECT added FROM dumpcontent ORDER BY added LIMIT 0, @max)));`,
+// 		`-- Remove excess elements from the path
+// DELETE FROM content WHERE content.rowid = (
+//   SELECT contentid FROM dumpcontent WHERE dumpcontent.added <= (
+//     SELECT MAX(added) FROM (
+//       SELECT added FROM dumpcontent ORDER BY added LIMIT 0, @max)));`,
 
 		`-- Insert new content
 INSERT INTO content(text) VALUES (@content);`,
@@ -123,38 +123,77 @@ WHERE dump.path = @path AND content.text = @content;
 	)
 }
 
-func (db *Db) Delete(path, id string) error {
+func (db *Db) Delete(path string, ids ...int) error {
 	return nil
+}
+
+func (db *Db) query(query string, handleRow func(*sql.Rows) error,
+	args ...interface{}) (error) {
+
+	rows, err := db.db.QueryContext(db.ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		err = handleRow(rows)
+		if err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 func (db *Db) GetPaths() ([]string, error) {
 	query := `
 SELECT path FROM dump ORDER BY path ASC;
 `
-	rows, err := db.db.QueryContext(db.ctx, query)
-	if err != nil {
-		return nil, err
-	}
-
 	ret := []string{}
-	for rows.Next() {
+	row := func(rows *sql.Rows) error {
 		var path string
-		err = rows.Scan(&path)
+		err := rows.Scan(&path)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		ret = append(ret, path)
+		return nil
 	}
-	err = rows.Err()
+
+	err := db.query(query, row)
 	if err != nil {
 		return nil, err
 	}
-
 	return ret, nil
 }
 
-func (db *Db) GetContent(path, id string) ([]Content, error) {
-	return nil, nil
+func (db *Db) GetContent(path string, numLatest int) ([]Content, error) {
+	query := `
+SELECT content.rowid, content.text, dumpcontent.added
+FROM content, dumpcontent, dump
+WHERE content.rowid = dumpcontent.contentid AND dump.path = @path
+ORDER BY dumpcontent.added DESC
+LIMIT @limit;
+`
+	ret := []Content{}
+
+	row := func(rows *sql.Rows) error {
+		var c Content
+		err := rows.Scan(&c.Id, &c.Text, &c.Date)
+		if err != nil {
+			return err
+		}
+		ret = append(ret, c)
+		return nil
+	}
+
+	err := db.query(query, row,
+		sql.Named("path", path),
+		sql.Named("limit", numLatest),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (db *Db) Close() error {

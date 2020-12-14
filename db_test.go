@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -28,10 +29,12 @@ func diffStr(a, b interface{}) (ret string) {
 	return
 }
 
-func compare(t *testing.T, msg string, a, b interface{}) {
+func compare(t *testing.T, msg string, a, b interface{}) error {
 	if !structEquals(a, b) {
 		t.Error(msg, "\n", diffStr(a, b))
+		return fmt.Errorf("Not equals")
 	}
+	return nil
 }
 
 var dbfile = "test.sqlite3"
@@ -91,6 +94,16 @@ func TestDb(t *testing.T) {
 		}
 	}
 
+	expectLatestContent := func(path, content string) testFunc {
+		return func(d *Db) error {
+			c, err := d.GetContent(path, 1)
+			if err != nil {
+				return err
+			}
+			return compare(t, "content not equal", c[0].Text, content)
+		}
+	}
+
 	ctx := context.TODO()
 
 	tests := []struct {
@@ -107,6 +120,14 @@ func TestDb(t *testing.T) {
 			add("/abc", "content"),
 			add("/second", "other"),
 		}, false, []string{"/abc", "/second"}},
+		{"Data", []testOp{
+			add("/a", "content"),
+			expectLatestContent("/a", "content"),
+			add("/a", "updated"),
+			expectLatestContent("/a", "updated"),
+			add("/a", "Third time"),
+			expectLatestContent("/a", "Third time"),
+		}, false, []string{"/a"}},
 	}
 	for _, tt := range tests {
 		// Remove the dbfile before testing
@@ -144,7 +165,7 @@ func TestDb(t *testing.T) {
 					err)
 				return
 			}
-			compare(t, "db.GetPaths not expected", paths, tt.wantPaths)
+			_ = compare(t, "db.GetPaths not expected", paths, tt.wantPaths)
 		})
 		err = db.Close()
 		if err != nil {
