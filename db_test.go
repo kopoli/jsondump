@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pmezard/go-difflib/difflib"
@@ -116,6 +117,13 @@ func TestDb(t *testing.T) {
 		}
 	}
 
+	setReplaceInterval := func(interval time.Duration) testFunc {
+		return func(d *Db) error {
+			d.ReplaceInterval = interval
+			return nil
+		}
+	}
+
 	setMaxVersions := func(vers int) testFunc {
 		return func(d *Db) error {
 			d.MaxVersions = vers
@@ -159,20 +167,28 @@ func TestDb(t *testing.T) {
 		}, false, []string{"/a"}},
 		{"Versions under limit", []testOp{
 			setMaxVersions(5),
-			add("/a", "1", "2", "3", "4"),
-			expectLatestContent("/a", "4"),
+			setReplaceInterval(0),
+			add("/a", "1", "2", "3", "final"),
+			expectLatestContent("/a", "final"),
 			expectContentVersions("/a", 4),
 		}, false, []string{"/a"}},
 		{"Versions over limit", []testOp{
 			setMaxVersions(5),
+			setReplaceInterval(0),
 			add("/a", "1", "2", "3", "4", "5", "6", "7"),
 			expectLatestContent("/a", "7"),
 			expectContentVersions("/a", 5),
 		}, false, []string{"/a"}},
 		{"Default versions over limit", []testOp{
+			setReplaceInterval(0),
 			add("/a", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"),
 			expectLatestContent("/a", "11"),
 			expectContentVersions("/a", 10),
+		}, false, []string{"/a"}},
+		{"Default replaceinterval", []testOp{
+			add("/a", "1", "2", "3"),
+			expectLatestContent("/a", "3"),
+			expectContentVersions("/a", 1),
 		}, false, []string{"/a"}},
 		{"Deleting one path", []testOp{
 			add("/abc", "content"),

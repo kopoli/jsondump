@@ -9,7 +9,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const defaultVersions = 10
+const (
+	defaultVersions = 10
+	replaceInterval = time.Hour * 24
+)
 
 const schema = `
 CREATE TABLE IF NOT EXISTS dump (
@@ -17,15 +20,11 @@ CREATE TABLE IF NOT EXISTS dump (
   path TEXT DEFAULT "" NOT NULL UNIQUE ON CONFLICT ABORT
 );
 
-CREATE VIRTUAL TABLE IF NOT EXISTS content USING fts4 (
-  text DEFAULT "",
-);
-
-CREATE TABLE IF NOT EXISTS dumpcontent (
-  dumpid INTEGER REFERENCES dump(id) NOT NULL,
-  contentid INTEGER REFERENCES content(rowid) NOT NULL,
+CREATE TABLE IF NOT EXISTS content (
+  id INTEGER PRIMARY KEY ASC AUTOINCREMENT,
+  text DEFAULT "" NOT NULL,
   added DATETIME,
-  UNIQUE (dumpid, contentid)
+  dumpid INTEGER REFERENCES dump(id) NOT NULL
 );
 
 PRAGMA busy_timeout=10000;
@@ -36,6 +35,7 @@ type Db struct {
 	db          *sql.DB
 	ctx         context.Context
 	MaxVersions int
+	ReplaceInterval time.Duration
 }
 
 type Content struct {
@@ -62,6 +62,7 @@ func CreateDb(path string, ctx context.Context) (*Db, error) {
 		db:          d,
 		ctx:         ctx,
 		MaxVersions: defaultVersions,
+		ReplaceInterval: replaceInterval,
 	}
 
 	return ret, nil
@@ -97,45 +98,42 @@ INSERT INTO dump(path)
 SELECT @path
 WHERE NOT EXISTS (SELECT 1 FROM dump WHERE path = @path);`,
 
-		`-- Remove excess elements from the junction table
-DELETE FROM dumpcontent
-WHERE dumpcontent.dumpid = (SELECT id FROM dump WHERE path = @path) AND
-  dumpcontent.contentid IN (
-SELECT contentid FROM dumpcontent ORDER BY contentid DESC LIMIT -1 OFFSET @max);
-`,
-
-		`-- Remove unreferenced elements from the content table
+		`-- Delete content that is in the replace interval
 DELETE FROM content
-WHERE content.rowid NOT IN (SELECT contentid FROM dumpcontent);
+WHERE content.dumpid = (SELECT id FROM dump WHERE path = @path) AND
+  strftime('%s', content.added) > strftime('%s', @from) AND
+  strftime('%s', content.added) <= strftime('%s', @added);
 `,
 		`-- Insert new content
-INSERT INTO content(text) VALUES (@content);`,
-
-		`-- Insert new bindings
-INSERT INTO dumpcontent(dumpid, contentid, added)
-SELECT dump.id, content.rowid, @added FROM dump, content
-WHERE dump.path = @path AND content.text = @content;
-`}
+INSERT INTO content(text, added, dumpid)
+SELECT @content AS text, @added AS added, dump.id
+FROM dump
+WHERE dump.path = @path;
+`,
+		`-- Remove excess elements from the content table
+DELETE FROM content
+WHERE content.dumpid = (SELECT id FROM dump WHERE path = @path) AND
+  content.id IN (SELECT id FROM content ORDER BY id DESC LIMIT -1 OFFSET @max);
+`,
+	}
 
 	added := time.Now()
+	replaceTime := added.Add(-db.ReplaceInterval)
 
 	return db.exec(queries,
 		sql.Named("path", path),
 		sql.Named("content", content),
 		sql.Named("added", added),
-		sql.Named("max", db.MaxVersions-1),
+		sql.Named("from", replaceTime),
+		sql.Named("max", db.MaxVersions),
 	)
 }
 
 func (db *Db) Delete(path string) error {
 	queries := []string{
 		`-- Remove excess elements from the junction table
-DELETE FROM dumpcontent
-WHERE dumpcontent.dumpid = (SELECT id FROM dump WHERE path = @path);
-`,
-		`-- Remove unreferenced elements from the content table
 DELETE FROM content
-WHERE content.rowid NOT IN (SELECT contentid FROM dumpcontent);
+WHERE content.dumpid = (SELECT id FROM dump WHERE path = @path);
 `,
 		`-- Delete path
 DELETE FROM dump
@@ -187,10 +185,10 @@ SELECT path FROM dump ORDER BY path ASC;
 
 func (db *Db) GetContent(path string, numLatest int) ([]Content, error) {
 	query := `
-SELECT content.rowid, content.text, dumpcontent.added
-FROM content, dumpcontent, dump
-WHERE content.rowid = dumpcontent.contentid AND dump.path = @path
-ORDER BY dumpcontent.added DESC
+SELECT content.id, content.text, content.added
+FROM content, dump
+WHERE dump.path = @path
+ORDER BY content.added DESC
 LIMIT @limit;
 `
 	ret := []Content{}
