@@ -78,7 +78,7 @@ func main() {
 	cmd := opts.Get("cmdline-command", "")
 	// args := SplitArguments(opts.Get("cmdline-args", ""))
 
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	dbpath = filepath.Join(dbpath, "jsondump.sqlite3")
 	db, err := CreateDb(dbpath, ctx)
@@ -91,7 +91,7 @@ func main() {
 		if *optTimestampLog {
 			opts.Set("log-timestamps", "t")
 		}
-		// err = StartWeb(opts)
+		err = StartWeb(db, opts)
 		// checkErr(err)
 		return
 	}
