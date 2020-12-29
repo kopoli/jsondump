@@ -37,14 +37,14 @@ func main() {
 	opts.Set("program-buildgoos", buildGOOS)
 	opts.Set("program-buildgoarch", buildGOARCH)
 
-	base := NewCommand(nil, "", "")
+	base := appkit.NewCommand(nil, "", "")
 	base.Flags.Usage = func() {
 		out := base.Flags.Output()
 		fmt.Fprintf(out,
 			"%s: Store json dumps\n\nCommands:\n",
 			os.Args[0])
 		base.CommandList(out)
-		if HasFlags(base.Flags) {
+		if appkit.HasFlags(base.Flags) {
 			fmt.Fprintf(out, "\nOptions:\n")
 			base.Flags.PrintDefaults()
 		}
@@ -53,7 +53,7 @@ func main() {
 	optVersion := base.Flags.Bool("version", false, "Display version")
 	optDbPath := base.Flags.String("db-path", dbpath, "Database path")
 
-	web := NewCommand(base, "start-web web", "Start web server")
+	web := appkit.NewCommand(base, "start-web web", "Start web server")
 	optAddr := web.Flags.String("address", ":8042", "Listen address and port")
 	optTimestampLog := web.Flags.Bool("log-timestamps", false, "Write timestamps to log")
 
