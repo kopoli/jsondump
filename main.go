@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/kopoli/appkit"
+	jsondump "github.com/kopoli/jsondump/server"
 )
 
 var (
@@ -81,7 +82,7 @@ func main() {
 	ctx := context.Background()
 
 	dbpath = filepath.Join(dbpath, "jsondump.sqlite3")
-	db, err := CreateDb(dbpath, ctx)
+	db, err := jsondump.CreateDb(dbpath, ctx)
 	checkErr(err)
 	defer db.Close()
 
@@ -91,7 +92,7 @@ func main() {
 		if *optTimestampLog {
 			opts.Set("log-timestamps", "t")
 		}
-		err = StartWeb(db, opts)
+		err = jsondump.StartWeb(db, opts)
 		checkErr(err)
 		return
 	}

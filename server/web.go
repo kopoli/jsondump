@@ -1,4 +1,4 @@
-package main
+package jsondump
 
 import (
 	"encoding/json"
