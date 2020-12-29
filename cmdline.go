@@ -28,9 +28,9 @@ func HasFlags(fs *flag.FlagSet) bool {
 	return ret
 }
 
-// func SplitCommand(cmdstr string) []string {
-// 	return strings.Fields(cmdstr)
-// }
+func SplitCommand(cmdstr string) []string {
+	return strings.Fields(cmdstr)
+}
 
 func SplitArguments(argstr string) []string {
 	return strings.Split(argstr, "\000")
