@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -83,40 +84,56 @@ func respond(w http.ResponseWriter, data string, err error, code int) {
 	}
 }
 
-func (ra *RestApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// path := strings.TrimPrefix(r.URL.EscapedPath(), ra.prefix)
+func jsonify(data interface{}, err error) (string, error) {
+	if data == nil || err != nil {
+		return "", err
+	}
+	out, err := json.Marshal(data)
+	return string(out), err
+}
 
-	// codeFromError := func(err error) int {
-	// 	if err != nil {
-	// 		return http.StatusBadRequest
-	// 	} else {
-	// 		return http.StatusOK
-	// 	}
-	// }
+func (ra *RestApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.EscapedPath(), ra.prefix)
+
+	codeFromError := func(err error) int {
+		if err != nil {
+			return http.StatusBadRequest
+		} else {
+			return http.StatusOK
+		}
+	}
 
 	switch r.Method {
 	case "GET":
-		// out, err := ra.db.Get(dbCmd, args...)
 		ra.dbMutex.RLock()
-		// respond(w, out, err, codeFromError(err))
+		var out string
+		if path == "/" {
+			data, err := ra.db.GetPaths()
+			out, err = jsonify(data, err)
+			respond(w, out, err, codeFromError(err))
+		} else {
+			data, err := ra.db.GetContent(path, -1)
+			out, err = jsonify(data, err)
+			respond(w, out, err, codeFromError(err))
+		}
 		ra.dbMutex.RUnlock()
-		// return
+		return
 	case "PUT":
-		// ra.dbMutex.Lock()
+		ra.dbMutex.Lock()
 		// err := ra.db.Set(dbCmd, args...)
 		// if err == nil {
 		// 	err = ra.db.Export()
 		// }
-		// ra.dbMutex.Unlock()
+		ra.dbMutex.Unlock()
 		// respond(w, "", err, codeFromError(err))
 		// return
 	case "DELETE":
-		// ra.dbMutex.Lock()
+		ra.dbMutex.Lock()
 		// err := ra.db.Delete(dbCmd, args...)
 		// if err == nil {
 		// 	err = ra.db.Export()
 		// }
-		// ra.dbMutex.Unlock()
+		ra.dbMutex.Unlock()
 		// respond(w, "", err, codeFromError(err))
 		// return
 	default:
