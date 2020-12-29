@@ -92,7 +92,7 @@ func main() {
 			opts.Set("log-timestamps", "t")
 		}
 		err = StartWeb(db, opts)
-		// checkErr(err)
+		checkErr(err)
 		return
 	}
 }
