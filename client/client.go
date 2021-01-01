@@ -7,7 +7,7 @@ import (
 )
 
 type Client struct {
-	Http http.Client
+	Http *http.Client
 }
 
 func NewClient(url string) (*Client, error) {
@@ -19,8 +19,8 @@ func NewClient(url string) (*Client, error) {
 	}
 
 	return &Client{
-		Http: http.Client{
-			Timeout: time.Second * 10,
+		Http: &http.Client{
+			Timeout:   time.Second * 10,
 			Transport: tr,
 		},
 	}, nil

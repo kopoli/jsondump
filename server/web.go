@@ -142,7 +142,7 @@ func (ra *RestApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StartWeb(db *Db, opts appkit.Options) error {
+func CreateHandler(db *Db, opts appkit.Options) http.Handler {
 	var logflags int = 0
 
 	if opts.IsSet("log-timestamps") {
@@ -175,6 +175,12 @@ func StartWeb(db *Db, opts appkit.Options) error {
 
 	// mux.Handle("/", stack(http.FileServer(_escDir(true, "/"))))
 	// mux.Handle("/", stack(http.FileServer(http.Dir("static"))))
+
+	return mux
+}
+
+func StartWeb(db *Db, opts appkit.Options) error {
+	mux := CreateHandler(db, opts)
 
 	addr := opts.Get("address", ":8042")
 
