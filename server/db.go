@@ -131,16 +131,16 @@ WHERE content.dumpid = (SELECT id FROM dump WHERE path = @path) AND
 
 func (db *Db) Delete(path string) error {
 	queries := []string{
-		`-- Remove excess elements from the junction table
+		`-- Remove excess elements from the content table
 DELETE FROM content
-WHERE content.dumpid = (SELECT id FROM dump WHERE path = @path);
+WHERE content.dumpid = (SELECT id FROM dump WHERE path LIKE @path);
 `,
-		`-- Delete path
+		`-- Delete path prefix recursively
 DELETE FROM dump
-WHERE dump.path = @path;
+WHERE dump.path LIKE @path;
 `}
 	return db.exec(queries,
-		sql.Named("path", path),
+		sql.Named("path", path+"%"),
 	)
 }
 
@@ -185,17 +185,22 @@ SELECT path FROM dump ORDER BY path ASC;
 
 func (db *Db) GetContent(path string, numLatest int) ([]Content, error) {
 	query := `
-SELECT content.id, content.text, content.added
-FROM content, dump
-WHERE dump.path = @path
-ORDER BY content.added DESC
-LIMIT @limit;
+SELECT * FROM (
+  -- Add row numbers to the rows in groups partitioned by different paths
+  SELECT content.id, content.text, content.added, dump.path,
+         row_number() OVER (PARTITION BY dump.path ORDER BY content.added DESC) AS count
+  FROM content, dump
+  WHERE dump.path LIKE @path AND dump.id = content.dumpid
+  ORDER BY dump.path, content.added DESC)
+-- if the row number is too high (i.e. too old version)
+WHERE count <= @limit;
 `
 	ret := []Content{}
 
 	row := func(rows *sql.Rows) error {
 		var c Content
-		err := rows.Scan(&c.Id, &c.Text, &c.Date)
+		var count int
+		err := rows.Scan(&c.Id, &c.Text, &c.Date, &c.Path, &count)
 		if err != nil {
 			return err
 		}
@@ -208,7 +213,7 @@ LIMIT @limit;
 	}
 
 	err := db.query(query, row,
-		sql.Named("path", path),
+		sql.Named("path", path+"%"),
 		sql.Named("limit", numLatest),
 	)
 	if err != nil {

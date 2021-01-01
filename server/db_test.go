@@ -107,13 +107,19 @@ func TestDb(t *testing.T) {
 		}
 	}
 
-	expectLatestContent := func(path, content string) testFunc {
+	expectLatestContent := func(path string, content ...string) testFunc {
 		return func(d *Db) error {
 			c, err := d.GetContent(path, 1)
 			if err != nil {
 				return err
 			}
-			return compare(t, "content not equal", c[0].Text, content)
+
+			texts := make([]string, 0, len(c))
+			for i := range c {
+				texts = append(texts, c[i].Text)
+			}
+
+			return compare(t, "content not equal", texts, content)
 		}
 	}
 
@@ -200,6 +206,33 @@ func TestDb(t *testing.T) {
 			add("/third", "val"),
 			del("/second"),
 		}, false, []string{"/abc", "/third"}},
+		{"Deleting paths recursively", []testOp{
+			add("/abc", "content"),
+			add("/abc/sub", "other"),
+			add("/third", "val"),
+			del("/abc"),
+		}, false, []string{"/third"}},
+		{"Deleting paths recursively 2", []testOp{
+			add("/abc/sip", "content"),
+			add("/abc/sub", "other"),
+			add("/abc/sub/third", "val"),
+			del("/abc/sub"),
+		}, false, []string{"/abc/sip"}},
+		{"Get recursively", []testOp{
+			add("/a/first", "content"),
+			add("/a/second", "updated"),
+			expectLatestContent("/a", "content", "updated"),
+		}, false, []string{"/a/first", "/a/second"}},
+		{"Get recursively 2", []testOp{
+			setReplaceInterval(0),
+			add("/a/first", "content", "second"),
+			add("/a/second", "updated"),
+			add("/a/first", "third"),
+			expectLatestContent("/a", "third", "updated"),
+			expectContentVersions("/a", 4),
+			expectContentVersions("/a/first", 3),
+			expectContentVersions("/a/second", 1),
+		}, false, []string{"/a/first", "/a/second"}},
 	}
 	for _, tt := range tests {
 		// Remove the dbfile before testing
