@@ -32,13 +32,14 @@ PRAGMA user_version=1;
 `
 
 type Db struct {
-	db          *sql.DB
-	ctx         context.Context
-	MaxVersions int
+	db              *sql.DB
+	ctx             context.Context
+	MaxVersions     int
 	ReplaceInterval time.Duration
 }
 
 type Content struct {
+	Path string
 	Id   int
 	Text string
 	Date time.Time
@@ -59,9 +60,9 @@ func CreateDb(path string, ctx context.Context) (*Db, error) {
 	d.SetMaxOpenConns(1)
 
 	ret := &Db{
-		db:          d,
-		ctx:         ctx,
-		MaxVersions: defaultVersions,
+		db:              d,
+		ctx:             ctx,
+		MaxVersions:     defaultVersions,
 		ReplaceInterval: replaceInterval,
 	}
 
