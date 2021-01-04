@@ -1,8 +1,11 @@
 package jsondump
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/pprof"
@@ -92,6 +95,26 @@ func jsonify(data interface{}, err error) (string, error) {
 	return string(out), err
 }
 
+func parseJson(r io.ReadCloser) (string, error) {
+	b, err := ioutil.ReadAll(r)
+	r.Close()
+	if err != nil {
+		return "", err
+	}
+
+	if !json.Valid(b) {
+		return "", fmt.Errorf("Not valid JSON")
+	}
+
+	var buf bytes.Buffer
+	err = json.Compact(&buf, b)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 func (ra *RestApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.EscapedPath(), ra.prefix)
 
@@ -103,39 +126,47 @@ func (ra *RestApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if path == "/" {
+		switch r.Method {
+		case "GET":
+			var out string
+			ra.dbMutex.RLock()
+			data, err := ra.db.GetPaths()
+			ra.dbMutex.RUnlock()
+			out, err = jsonify(data, err)
+			respond(w, out, err, codeFromError(err))
+		case "PUT":
+		}
+
+		return
+	}
+
 	switch r.Method {
 	case "GET":
-		ra.dbMutex.RLock()
 		var out string
-		if path == "/" {
-			data, err := ra.db.GetPaths()
-			out, err = jsonify(data, err)
-			respond(w, out, err, codeFromError(err))
-		} else {
-			data, err := ra.db.GetContent(path, -1)
-			out, err = jsonify(data, err)
-			respond(w, out, err, codeFromError(err))
-		}
+		ra.dbMutex.RLock()
+		data, err := ra.db.GetContent(path, 1)
 		ra.dbMutex.RUnlock()
+
+		fmt.Println(data, err)
+		out, err = jsonify(data, err)
+		respond(w, out, err, codeFromError(err))
 		return
 	case "PUT":
-		ra.dbMutex.Lock()
-		// err := ra.db.Set(dbCmd, args...)
-		// if err == nil {
-		// 	err = ra.db.Export()
-		// }
-		ra.dbMutex.Unlock()
-		// respond(w, "", err, codeFromError(err))
-		// return
+		jsdata, err := parseJson(r.Body)
+		if err == nil {
+			ra.dbMutex.Lock()
+			err = ra.db.Add(path, jsdata)
+			ra.dbMutex.Unlock()
+		}
+		respond(w, "", err, codeFromError(err))
+		return
 	case "DELETE":
 		ra.dbMutex.Lock()
-		// err := ra.db.Delete(dbCmd, args...)
-		// if err == nil {
-		// 	err = ra.db.Export()
-		// }
+		err := ra.db.Delete(path)
 		ra.dbMutex.Unlock()
-		// respond(w, "", err, codeFromError(err))
-		// return
+		respond(w, "", err, codeFromError(err))
+		return
 	default:
 		respond(w, "", fmt.Errorf("Unknown method"), http.StatusBadRequest)
 		return
