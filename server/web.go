@@ -102,6 +102,8 @@ func parseJson(r io.ReadCloser) (string, error) {
 		return "", err
 	}
 
+	fmt.Println("GOT Data", string(b))
+
 	if !json.Valid(b) {
 		return "", fmt.Errorf("Not valid JSON")
 	}
