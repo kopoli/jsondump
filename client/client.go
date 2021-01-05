@@ -78,7 +78,16 @@ func (c *Client) doRequest(request, path string, r io.Reader) (*http.Response, e
 		return nil, err
 	}
 	resp, err := c.Http.Do(req)
-	return resp, err
+	if err != nil {
+		return nil, err
+	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return resp, err
+	default:
+		return nil, fmt.Errorf("Received %d %s", resp.StatusCode,
+			resp.Status)
+	}
 }
 
 func (c *Client) Get(path string) ([]string, error) {
