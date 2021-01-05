@@ -42,6 +42,7 @@ func compare(t *testing.T, msg string, a, b interface{}) error {
 type state struct {
 	Db     *jsondump.Db
 	Client *client.Client
+	Op int
 }
 
 type testOp interface {
@@ -58,6 +59,21 @@ func TestOperations(t *testing.T) {
 	put := func(path string, content string) testFunc {
 		return func(s *state) error {
 			return s.Client.Put(path, content)
+		}
+	}
+
+	var failedOp int = -1
+
+	expectFailure := func() testFunc {
+		return func(s *state) error {
+			if failedOp < 0 {
+				e := fmt.Sprintf("Expected previous op (%d) to fail",
+					s.Op - 1)
+				t.Errorf(e)
+				return fmt.Errorf(e)
+			}
+			failedOp = -1
+			return nil
 		}
 	}
 
@@ -79,20 +95,24 @@ func TestOperations(t *testing.T) {
 	tests := []struct {
 		name    string
 		ops     []testOp
-		wantErr bool
 	}{
-		{"No test operations", []testOp{}, false},
+		{"No test operations", []testOp{}},
 		{"Nothing put, get empty", []testOp{
 			expectContent("/abc", []string{}...),
-		}, false},
+		}},
 		{"Simple put/get", []testOp{
 			put("/abc", `"contenthere"`),
 			expectContent("/abc", `"contenthere"`),
-		}, false},
+		}},
 		{"Simple put/get 2", []testOp{
 			put("/abc", `{"contenthere": "first"}`),
 			expectContent("/abc", `{"contenthere": "first"}`),
-		}, false},
+		}},
+		{"Put invalid json", []testOp{
+			put("/abc", `{"contenthere": "firs`),
+			expectFailure(),
+			expectContent("/abc", []string{}...),
+		}},
 	}
 	for _, tt := range tests {
 		_ = os.Remove(dbfile)
@@ -127,17 +147,19 @@ func TestOperations(t *testing.T) {
 				i      int
 			}{}
 			for i, op := range tt.ops {
+				st.Op = i
 				err := op.run(st)
 				failed = failed || (err != nil)
 				if failed && !fail.failed {
 					fail.failed = true
 					fail.err = err
 					fail.i = i
+					failedOp = i
 				}
 			}
-			if failed != tt.wantErr {
-				t.Errorf("op no.%d error = %v, wantErr %v",
-					fail.i, fail.err, tt.wantErr)
+			if failed && failedOp >= 0 {
+				t.Errorf("Unexpected error in op no.%d error = %v",
+					fail.i, fail.err)
 				return
 			}
 		})
