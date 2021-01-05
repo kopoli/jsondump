@@ -149,5 +149,9 @@ func (c *Client) Put(path string, data interface{}) error {
 	}
 
 	return c.PutRaw(path, b)
+}
+
+func (c *Client) Delete(path string) error {
+	_, err := c.doRequest("DELETE", path, nil)
 	return err
 }

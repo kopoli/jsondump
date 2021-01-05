@@ -69,6 +69,12 @@ func TestOperations(t *testing.T) {
 		}
 	}
 
+	del := func(path string) testFunc {
+		return func(s *state) error {
+			return s.Client.Delete(path)
+		}
+	}
+
 	var failedOp int = -1
 
 	expectFailure := func() testFunc {
@@ -115,13 +121,51 @@ func TestOperations(t *testing.T) {
 			expectContent("/abc", `"contenthere"`),
 		}},
 		{"Simple put/get 2", []testOp{
-			putraw("/abc", `{"contenthere":"first"}`),
+			putraw("/abc", `{"contenthere":   "first"   }`),
 			expectContent("/abc", `{"contenthere":"first"}`),
+		}},
+		{"Put multiple", []testOp{
+			putraw("/abc", `{"a":"b"   }`),
+			putraw("/cde", `{"c":"d"   }`),
+			expectContent("/abc", `{"a":"b"}`),
+			expectContent("/cde", `{"c":"d"}`),
+		}},
+		{"Put hierarchy", []testOp{
+			putraw("/abc/a", `{"a":"b"   }`),
+			putraw("/abc/b", `{"c":"d"   }`),
+			expectContent("/abc", `{"a":"b"}`, `{"c":"d"}`),
+		}},
+		{"Put overwrite", []testOp{
+			putraw("/abc/a", `{"a":"b"   }`),
+			putraw("/abc/a", `{"c":"d"   }`),
+			expectContent("/abc", `{"c":"d"}`),
 		}},
 		{"Put invalid json", []testOp{
 			putraw("/abc", `{"contenthere":"firs`),
 			expectFailure(),
 			expectContent("/abc", []string{}...),
+		}},
+		{"Delete empty", []testOp{
+			del("/abc"),
+			expectContent("/abc", []string{}...),
+		}},
+		{"Delete data", []testOp{
+			putraw("/abc", `{"contenthere":   "first"   }`),
+			expectContent("/abc", `{"contenthere":"first"}`),
+			del("/abc"),
+			expectContent("/abc", []string{}...),
+		}},
+		{"Delete hierarchy", []testOp{
+			putraw("/abc/a", `{"a":"b"   }`),
+			putraw("/abc/b", `{"c":"d"   }`),
+			del("/abc"),
+			expectContent("/abc", []string{}...),
+		}},
+		{"Delete hierarchy partly", []testOp{
+			putraw("/abc/a", `{"a":"b"   }`),
+			putraw("/abc/b", `{"c":"d"   }`),
+			del("/abc/a"),
+			expectContent("/abc", `{"c":"d"}`),
 		}},
 	}
 	for _, tt := range tests {
