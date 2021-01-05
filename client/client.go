@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kopoli/appkit"
@@ -134,6 +135,19 @@ func (c *Client) GetRaw(path string) ([]string, error) {
 		ret = append(ret, s)
 	}
 	return ret, err
+}
+
+func (c *Client) Get(path string, values interface{}) error {
+	js, err := c.GetRaw(path)
+	if err != nil {
+		return err
+	}
+
+	whole := `[` + strings.Join(js, `,`) + `]`
+
+	err = json.Unmarshal([]byte(whole), values)
+
+	return err
 }
 
 func (c *Client) PutRaw(path string, json []byte) error {

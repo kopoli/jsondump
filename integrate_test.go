@@ -55,6 +55,11 @@ func (t testFunc) run(s *state) error {
 	return t(s)
 }
 
+type testData struct {
+	A int
+	B string
+}
+
 func TestOperations(t *testing.T) {
 	putRaw := func(path string, content string) testFunc {
 		return func(s *state) error {
@@ -94,6 +99,28 @@ func TestOperations(t *testing.T) {
 
 			// text := d.(string)
 			return compare(t, "content not equal", content, d)
+		}
+	}
+
+	put := func(path string, content interface{}) testFunc {
+		return func(s *state) error {
+			return s.Client.Put(path, content)
+		}
+	}
+
+	expectContent := func(path string, content ...testData) testFunc {
+		return func(s *state) error {
+			var v []testData
+			err := s.Client.Get(path, &v)
+			if err != nil {
+				return err
+			}
+
+			// Clear extra slice capacity
+			v2 := make([]testData,len(v))
+			copy(v2, v)
+
+			return compare(t, "content not equal", content, v2)
 		}
 	}
 
@@ -159,6 +186,16 @@ func TestOperations(t *testing.T) {
 			putRaw("/abc/b", `{"c":"d"   }`),
 			del("/abc/a"),
 			expectRawContent("/abc", `{"c":"d"}`),
+		}},
+		{"Put with marshalling", []testOp{
+			put("/abc", testData{A: 10, B: "smth"}),
+			expectContent("/abc", testData{A: 10, B: "smth"}),
+		}},
+		{"Put with marshalling hierarchy", []testOp{
+			put("/abc/a", testData{A: 10, B: "smth"}),
+			put("/abc/b", testData{A: -1, B: "val"}),
+			expectContent("/abc", testData{A: 10, B: "smth"},
+				testData{A: -1, B: "val"}),
 		}},
 	}
 	for _, tt := range tests {
