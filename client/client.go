@@ -90,7 +90,7 @@ func (c *Client) doRequest(request, path string, r io.Reader) (*http.Response, e
 	}
 }
 
-func (c *Client) Get(path string) ([]string, error) {
+func (c *Client) GetRaw(path string) ([]string, error) {
 	resp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err

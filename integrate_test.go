@@ -56,15 +56,8 @@ func (t testFunc) run(s *state) error {
 }
 
 func TestOperations(t *testing.T) {
-	putraw := func(path string, content string) testFunc {
+	putRaw := func(path string, content string) testFunc {
 		return func(s *state) error {
-			// i := json.RawMessage{}
-
-			// err := json.Unmarshal([]byte(content), &i)
-			// if err != nil {
-			// 	return err
-			// }
-
 			return s.Client.PutRaw(path, []byte(content))
 		}
 	}
@@ -90,9 +83,9 @@ func TestOperations(t *testing.T) {
 		}
 	}
 
-	expectContent := func(path string, content ...string) testFunc {
+	expectRawContent := func(path string, content ...string) testFunc {
 		return func(s *state) error {
-			d, err := s.Client.Get(path)
+			d, err := s.Client.GetRaw(path)
 			if err != nil {
 				return err
 			}
@@ -114,58 +107,58 @@ func TestOperations(t *testing.T) {
 	}{
 		{"No test operations", []testOp{}},
 		{"Nothing put, get empty", []testOp{
-			expectContent("/abc", []string{}...),
+			expectRawContent("/abc", []string{}...),
 		}},
 		{"Simple put/get", []testOp{
-			putraw("/abc", `"contenthere"`),
-			expectContent("/abc", `"contenthere"`),
+			putRaw("/abc", `"contenthere"`),
+			expectRawContent("/abc", `"contenthere"`),
 		}},
 		{"Simple put/get 2", []testOp{
-			putraw("/abc", `{"contenthere":   "first"   }`),
-			expectContent("/abc", `{"contenthere":"first"}`),
+			putRaw("/abc", `{"contenthere":   "first"   }`),
+			expectRawContent("/abc", `{"contenthere":"first"}`),
 		}},
 		{"Put multiple", []testOp{
-			putraw("/abc", `{"a":"b"   }`),
-			putraw("/cde", `{"c":"d"   }`),
-			expectContent("/abc", `{"a":"b"}`),
-			expectContent("/cde", `{"c":"d"}`),
+			putRaw("/abc", `{"a":"b"   }`),
+			putRaw("/cde", `{"c":"d"   }`),
+			expectRawContent("/abc", `{"a":"b"}`),
+			expectRawContent("/cde", `{"c":"d"}`),
 		}},
 		{"Put hierarchy", []testOp{
-			putraw("/abc/a", `{"a":"b"   }`),
-			putraw("/abc/b", `{"c":"d"   }`),
-			expectContent("/abc", `{"a":"b"}`, `{"c":"d"}`),
+			putRaw("/abc/a", `{"a":"b"   }`),
+			putRaw("/abc/b", `{"c":"d"   }`),
+			expectRawContent("/abc", `{"a":"b"}`, `{"c":"d"}`),
 		}},
 		{"Put overwrite", []testOp{
-			putraw("/abc/a", `{"a":"b"   }`),
-			putraw("/abc/a", `{"c":"d"   }`),
-			expectContent("/abc", `{"c":"d"}`),
+			putRaw("/abc/a", `{"a":"b"   }`),
+			putRaw("/abc/a", `{"c":"d"   }`),
+			expectRawContent("/abc", `{"c":"d"}`),
 		}},
 		{"Put invalid json", []testOp{
-			putraw("/abc", `{"contenthere":"firs`),
+			putRaw("/abc", `{"contenthere":"firs`),
 			expectFailure(),
-			expectContent("/abc", []string{}...),
+			expectRawContent("/abc", []string{}...),
 		}},
 		{"Delete empty", []testOp{
 			del("/abc"),
-			expectContent("/abc", []string{}...),
+			expectRawContent("/abc", []string{}...),
 		}},
 		{"Delete data", []testOp{
-			putraw("/abc", `{"contenthere":   "first"   }`),
-			expectContent("/abc", `{"contenthere":"first"}`),
+			putRaw("/abc", `{"contenthere":   "first"   }`),
+			expectRawContent("/abc", `{"contenthere":"first"}`),
 			del("/abc"),
-			expectContent("/abc", []string{}...),
+			expectRawContent("/abc", []string{}...),
 		}},
 		{"Delete hierarchy", []testOp{
-			putraw("/abc/a", `{"a":"b"   }`),
-			putraw("/abc/b", `{"c":"d"   }`),
+			putRaw("/abc/a", `{"a":"b"   }`),
+			putRaw("/abc/b", `{"c":"d"   }`),
 			del("/abc"),
-			expectContent("/abc", []string{}...),
+			expectRawContent("/abc", []string{}...),
 		}},
 		{"Delete hierarchy partly", []testOp{
-			putraw("/abc/a", `{"a":"b"   }`),
-			putraw("/abc/b", `{"c":"d"   }`),
+			putRaw("/abc/a", `{"a":"b"   }`),
+			putRaw("/abc/b", `{"c":"d"   }`),
 			del("/abc/a"),
-			expectContent("/abc", `{"c":"d"}`),
+			expectRawContent("/abc", `{"c":"d"}`),
 		}},
 	}
 	for _, tt := range tests {
