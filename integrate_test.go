@@ -42,7 +42,7 @@ func compare(t *testing.T, msg string, a, b interface{}) error {
 type state struct {
 	Db     *jsondump.Db
 	Client *client.Client
-	Op int
+	Op     int
 }
 
 type testOp interface {
@@ -56,9 +56,16 @@ func (t testFunc) run(s *state) error {
 }
 
 func TestOperations(t *testing.T) {
-	put := func(path string, content string) testFunc {
+	putraw := func(path string, content string) testFunc {
 		return func(s *state) error {
-			return s.Client.Put(path, content)
+			// i := json.RawMessage{}
+
+			// err := json.Unmarshal([]byte(content), &i)
+			// if err != nil {
+			// 	return err
+			// }
+
+			return s.Client.PutRaw(path, []byte(content))
 		}
 	}
 
@@ -68,7 +75,7 @@ func TestOperations(t *testing.T) {
 		return func(s *state) error {
 			if failedOp < 0 {
 				e := fmt.Sprintf("Expected previous op (%d) to fail",
-					s.Op - 1)
+					s.Op-1)
 				t.Errorf(e)
 				return fmt.Errorf(e)
 			}
@@ -84,7 +91,10 @@ func TestOperations(t *testing.T) {
 				return err
 			}
 
-			return compare(t, "content not equal", d, content)
+			// content = clarify(content)
+
+			// text := d.(string)
+			return compare(t, "content not equal", content, d)
 		}
 	}
 
@@ -93,23 +103,23 @@ func TestOperations(t *testing.T) {
 	ctx := context.TODO()
 
 	tests := []struct {
-		name    string
-		ops     []testOp
+		name string
+		ops  []testOp
 	}{
 		{"No test operations", []testOp{}},
 		{"Nothing put, get empty", []testOp{
 			expectContent("/abc", []string{}...),
 		}},
 		{"Simple put/get", []testOp{
-			put("/abc", `"contenthere"`),
+			putraw("/abc", `"contenthere"`),
 			expectContent("/abc", `"contenthere"`),
 		}},
 		{"Simple put/get 2", []testOp{
-			put("/abc", `{"contenthere": "first"}`),
-			expectContent("/abc", `{"contenthere": "first"}`),
+			putraw("/abc", `{"contenthere":"first"}`),
+			expectContent("/abc", `{"contenthere":"first"}`),
 		}},
 		{"Put invalid json", []testOp{
-			put("/abc", `{"contenthere": "firs`),
+			putraw("/abc", `{"contenthere":"firs`),
 			expectFailure(),
 			expectContent("/abc", []string{}...),
 		}},

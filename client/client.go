@@ -94,11 +94,11 @@ func (c *Client) Get(path string) ([]string, error) {
 	}
 
 	type data struct {
-		Status string      `json:"status"`
-		Data   []struct{
+		Status string `json:"status"`
+		Data   []struct {
 			Date string
 			Path string
-			Id float64
+			Id   float64
 			Text string
 		} `json:"data"`
 	}
@@ -115,15 +115,22 @@ func (c *Client) Get(path string) ([]string, error) {
 		err = fmt.Errorf("%v", d.Data)
 	}
 
-	ret := make([]string,0,len(d.Data))
+	ret := make([]string, 0, len(d.Data))
 	for i := range d.Data {
-		s, err := strconv.Unquote(d.Data[i].Text)
-		if err != nil {
-			return nil, fmt.Errorf("Returned invalid JSON: %v", err)
-		}
+		// s, err := strconv.Unquote(d.Data[i].Text)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("Returned invalid JSON: %v", err)
+		// }
+		s := d.Data[i].Text
 		ret = append(ret, s)
 	}
 	return ret, err
+}
+
+func (c *Client) PutRaw(path string, json []byte) error {
+	buf := bytes.NewBuffer(json)
+	_, err := c.doRequest("PUT", path, buf)
+	return err
 }
 
 func (c *Client) Put(path string, data interface{}) error {
@@ -131,8 +138,7 @@ func (c *Client) Put(path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	buf := bytes.NewBuffer(b)
 
-	_, err = c.doRequest("PUT", path, buf)
+	return c.PutRaw(path, b)
 	return err
 }
