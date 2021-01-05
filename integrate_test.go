@@ -61,15 +61,14 @@ func TestOperations(t *testing.T) {
 		}
 	}
 
-	expectContent := func(path string, content string) testFunc {
+	expectContent := func(path string, content ...string) testFunc {
 		return func(s *state) error {
 			d, err := s.Client.Get(path)
 			if err != nil {
 				return err
 			}
 
-			text := d.(string)
-			return compare(t, "content not equal", text, content)
+			return compare(t, "content not equal", d, content)
 		}
 	}
 
@@ -83,9 +82,16 @@ func TestOperations(t *testing.T) {
 		wantErr bool
 	}{
 		{"No test operations", []testOp{}, false},
+		{"Nothing put, get empty", []testOp{
+			expectContent("/abc", []string{}...),
+		}, false},
 		{"Simple put/get", []testOp{
 			put("/abc", `"contenthere"`),
 			expectContent("/abc", `"contenthere"`),
+		}, false},
+		{"Simple put/get 2", []testOp{
+			put("/abc", `{"contenthere": "first"}`),
+			expectContent("/abc", `{"contenthere": "first"}`),
 		}, false},
 	}
 	for _, tt := range tests {

@@ -81,7 +81,7 @@ func (c *Client) doRequest(request, path string, r io.Reader) (*http.Response, e
 	return resp, err
 }
 
-func (c *Client) Get(path string) (interface{}, error) {
+func (c *Client) Get(path string) ([]string, error) {
 	resp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,12 @@ func (c *Client) Get(path string) (interface{}, error) {
 
 	type data struct {
 		Status string      `json:"status"`
-		Data   interface{} `json:"data"`
+		Data   []struct{
+			Date string
+			Path string
+			Id float64
+			Text string
+		} `json:"data"`
 	}
 
 	var d data
@@ -110,7 +115,15 @@ func (c *Client) Get(path string) (interface{}, error) {
 		err = fmt.Errorf("%v", d.Data)
 	}
 
-	return d.Data, err
+	ret := make([]string,0,len(d.Data))
+	for i := range d.Data {
+		s, err := strconv.Unquote(d.Data[i].Text)
+		if err != nil {
+			return nil, fmt.Errorf("Returned invalid JSON: %v", err)
+		}
+		ret = append(ret, s)
+	}
+	return ret, err
 }
 
 func (c *Client) Put(path string, data interface{}) error {
