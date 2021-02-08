@@ -102,8 +102,6 @@ func parseJson(r io.ReadCloser) (string, error) {
 		return "", err
 	}
 
-	fmt.Println("GOT Data", string(b))
-
 	if !json.Valid(b) {
 		return "", fmt.Errorf("Not valid JSON")
 	}
@@ -194,7 +192,6 @@ func CreateHandler(db *Db, opts appkit.Options) http.Handler {
 	stack := func(h http.Handler) http.Handler {
 		return chain(h,
 			logHandler(),
-			// corsHandler(),
 		)
 	}
 
@@ -205,9 +202,6 @@ func CreateHandler(db *Db, opts appkit.Options) http.Handler {
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-
-	// mux.Handle("/", stack(http.FileServer(_escDir(true, "/"))))
-	// mux.Handle("/", stack(http.FileServer(http.Dir("static"))))
 
 	return mux
 }
@@ -223,7 +217,7 @@ func StartWeb(db *Db, opts appkit.Options) error {
 		Addr:        addr,
 		Handler:     mux,
 		ReadTimeout: 20 * time.Second,
-		// WriteTimeout: 20 * time.Second,
+		WriteTimeout: 20 * time.Second,
 		IdleTimeout: 120 * time.Second,
 	}
 

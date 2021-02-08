@@ -77,7 +77,6 @@ func main() {
 	checkErr(err)
 
 	cmd := opts.Get("cmdline-command", "")
-	// args := SplitArguments(opts.Get("cmdline-args", ""))
 
 	ctx := context.Background()
 
