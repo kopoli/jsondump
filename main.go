@@ -54,7 +54,7 @@ func main() {
 	optDbPath := base.Flags.String("db-path", dbpath, "Database path")
 
 	web := appkit.NewCommand(base, "start-web web", "Start web server")
-	optAddr := web.Flags.String("address", ":8042", "Listen address and port")
+	optAddr := web.Flags.String("address", ":8032", "Listen address and port")
 	optTimestampLog := web.Flags.Bool("log-timestamps", false, "Write timestamps to log")
 
 	err = base.Parse(os.Args[1:], opts)

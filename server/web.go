@@ -208,7 +208,7 @@ func CreateHandler(db *Db, opts appkit.Options) http.Handler {
 func StartWeb(db *Db, opts appkit.Options) error {
 	mux := CreateHandler(db, opts)
 
-	addr := opts.Get("address", ":8042")
+	addr := opts.Get("address", ":8032")
 
 	log.Println("Starting server at", addr)
 
