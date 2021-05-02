@@ -148,7 +148,6 @@ func (ra *RestApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		data, err := ra.db.GetContent(path, 1)
 		ra.dbMutex.RUnlock()
 
-		fmt.Println(data, err)
 		out, err = jsonify(data, err)
 		respond(w, out, err, codeFromError(err))
 		return

@@ -64,8 +64,6 @@ func (c *Client) createReq(method, path string, r io.Reader) (*http.Request, err
 	u := *c.Url
 	u.Path = filepath.Join(u.Path, path)
 
-	fmt.Println("Would send", method, "to URL", u.String())
-
 	if c.Ctx != nil {
 		return http.NewRequestWithContext(c.Ctx, method, u.String(), r)
 	} else {
@@ -119,18 +117,12 @@ func (c *Client) GetRaw(path string) ([]string, error) {
 		return nil, err
 	}
 
-	fmt.Println("GET data:", d)
-
 	if d.Status != "success" {
 		err = fmt.Errorf("%v", d.Data)
 	}
 
 	ret := make([]string, 0, len(d.Data))
 	for i := range d.Data {
-		// s, err := strconv.Unquote(d.Data[i].Text)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("Returned invalid JSON: %v", err)
-		// }
 		s := d.Data[i].Text
 		ret = append(ret, s)
 	}
@@ -144,9 +136,7 @@ func (c *Client) Get(path string, values interface{}) error {
 	}
 
 	whole := `[` + strings.Join(js, `,`) + `]`
-
 	err = json.Unmarshal([]byte(whole), values)
-
 	return err
 }
 
