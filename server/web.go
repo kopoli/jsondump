@@ -195,7 +195,7 @@ func CreateHandler(db *Db, opts appkit.Options) http.Handler {
 		)
 	}
 
-	mux.Handle(r.prefix, stack(r))
+	mux.Handle(r.prefix, r)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -203,7 +203,7 @@ func CreateHandler(db *Db, opts appkit.Options) http.Handler {
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-	return mux
+	return stack(mux)
 }
 
 func StartWeb(db *Db, opts appkit.Options) error {
