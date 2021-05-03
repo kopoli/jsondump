@@ -10,7 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +41,7 @@ func NewClient(URL string, opts appkit.Options) (*Client, error) {
 		return nil, err
 	}
 
-	u.Path = filepath.Join(u.Path, "api")
+	u.Path = path.Join(u.Path, "api")
 
 	tr := &http.Transport{
 		Dial: (&net.Dialer{
@@ -60,9 +60,9 @@ func NewClient(URL string, opts appkit.Options) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) createReq(method, path string, r io.Reader) (*http.Request, error) {
+func (c *Client) createReq(method, urlpath string, r io.Reader) (*http.Request, error) {
 	u := *c.Url
-	u.Path = filepath.Join(u.Path, path)
+	u.Path = path.Join(u.Path, urlpath)
 
 	if c.Ctx != nil {
 		return http.NewRequestWithContext(c.Ctx, method, u.String(), r)
@@ -71,8 +71,8 @@ func (c *Client) createReq(method, path string, r io.Reader) (*http.Request, err
 	}
 }
 
-func (c *Client) doRequest(request, path string, r io.Reader) (*http.Response, error) {
-	req, err := c.createReq(request, path, r)
+func (c *Client) doRequest(request, urlpath string, r io.Reader) (*http.Response, error) {
+	req, err := c.createReq(request, urlpath, r)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +89,8 @@ func (c *Client) doRequest(request, path string, r io.Reader) (*http.Response, e
 	}
 }
 
-func (c *Client) GetRaw(path string) ([]string, error) {
-	resp, err := c.doRequest("GET", path, nil)
+func (c *Client) GetRaw(urlpath string) ([]string, error) {
+	resp, err := c.doRequest("GET", urlpath, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +129,8 @@ func (c *Client) GetRaw(path string) ([]string, error) {
 	return ret, err
 }
 
-func (c *Client) Get(path string, values interface{}) error {
-	js, err := c.GetRaw(path)
+func (c *Client) Get(urlpath string, values interface{}) error {
+	js, err := c.GetRaw(urlpath)
 	if err != nil {
 		return err
 	}
@@ -140,22 +140,22 @@ func (c *Client) Get(path string, values interface{}) error {
 	return err
 }
 
-func (c *Client) PutRaw(path string, json []byte) error {
+func (c *Client) PutRaw(urlpath string, json []byte) error {
 	buf := bytes.NewBuffer(json)
-	_, err := c.doRequest("PUT", path, buf)
+	_, err := c.doRequest("PUT", urlpath, buf)
 	return err
 }
 
-func (c *Client) Put(path string, data interface{}) error {
+func (c *Client) Put(urlpath string, data interface{}) error {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
-	return c.PutRaw(path, b)
+	return c.PutRaw(urlpath, b)
 }
 
-func (c *Client) Delete(path string) error {
-	_, err := c.doRequest("DELETE", path, nil)
+func (c *Client) Delete(urlpath string) error {
+	_, err := c.doRequest("DELETE", urlpath, nil)
 	return err
 }
