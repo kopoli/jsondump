@@ -37,18 +37,7 @@ func main() {
 	opts.Set("program-buildgoos", buildGOOS)
 	opts.Set("program-buildgoarch", buildGOARCH)
 
-	base := appkit.NewCommand(nil, "", "")
-	base.Flags.Usage = func() {
-		out := base.Flags.Output()
-		fmt.Fprintf(out,
-			"%s: Store json dumps\n\nCommands:\n",
-			os.Args[0])
-		base.CommandList(out)
-		if appkit.HasFlags(base.Flags) {
-			fmt.Fprintf(out, "\nOptions:\n")
-			base.Flags.PrintDefaults()
-		}
-	}
+	base := appkit.NewCommand(nil, "", "Store JSON dumps")
 	optVerbose := base.Flags.Bool("verbose", false, "Enable verbose output")
 	optVersion := base.Flags.Bool("version", false, "Display version")
 	optDbPath := base.Flags.String("db-path", dbpath, "Database path")

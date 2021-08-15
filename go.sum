@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/kopoli/appkit v0.10.1 h1:GKfEzNsBuIxoUJgNhEQJoifgeVqGPuhe7UCjBL5JA74=
-github.com/kopoli/appkit v0.10.1/go.mod h1:H1HqIFhtGhG3DbQaYh+rQZGSz48P6TU95pjM3YuReJY=
+github.com/kopoli/appkit v0.11.1 h1:4ktly2vVpncO9nhJH4Ryvf7iQA0QNUIeC4F6dOqSE1Y=
+github.com/kopoli/appkit v0.11.1/go.mod h1:H1HqIFhtGhG3DbQaYh+rQZGSz48P6TU95pjM3YuReJY=
 github.com/mattn/go-sqlite3 v1.14.6 h1:dNPt6NO46WmLVt2DLNpwczCmdV5boIZ6g/tlDrlRUbg=
 github.com/mattn/go-sqlite3 v1.14.6/go.mod h1:NyWgC/yNuGj7Q9rpYnZvas74GogHl5/Z4A/KQRfk6bU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
